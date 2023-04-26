@@ -25,6 +25,7 @@ type ProxyHttpServer struct {
 	reqHandlers     []ReqHandler
 	respHandlers    []RespHandler
 	httpsHandlers   []HttpsHandler
+	websocketHandlers []WebsocketHandler
 	Tr              *http.Transport
 	// ConnectDial will be used to create TCP connections for CONNECT requests
 	// if nil Tr.Dial will be used
@@ -213,6 +214,7 @@ func NewProxyHttpServer() *ProxyHttpServer {
 		reqHandlers:   []ReqHandler{},
 		respHandlers:  []RespHandler{},
 		httpsHandlers: []HttpsHandler{},
+		websocketHandlers: []WebsocketHandler{},
 		NonproxyHandler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, "This is a proxy server. Does not respond to non-proxy requests.", 500)
 		}),
@@ -222,4 +224,17 @@ func NewProxyHttpServer() *ProxyHttpServer {
 	proxy.ConnectDial = dialerFromEnv(&proxy)
 
 	return &proxy
+}
+
+
+func (proxy *ProxyHttpServer) filterWebsocketPacket(data []byte, direction WebsocketDirection, ctx *ProxyCtx) []byte {
+	for _, h := range proxy.websocketHandlers {
+		data = h.Handle(data, direction, ctx)
+	}
+	return data
+}
+
+
+func (proxy *ProxyHttpServer) AddWebsocketHandler(f func(data []byte, direction WebsocketDirection, ctx *ProxyCtx) []byte) {
+	proxy.websocketHandlers = append(proxy.websocketHandlers, FuncWebsocketHandler(f))
 }

@@ -55,3 +55,22 @@ type FuncHttpsHandler func(host string, ctx *ProxyCtx) (*ConnectAction, string)
 func (f FuncHttpsHandler) HandleConnect(host string, ctx *ProxyCtx) (*ConnectAction, string) {
 	return f(host, ctx)
 }
+
+
+type WebsocketDirection int
+
+const (
+	ServerToClient WebsocketDirection = 0
+	ClientToServer WebsocketDirection = 1
+)
+
+type WebsocketHandler interface {
+	Handle(data []byte, direction WebsocketDirection,ctx *ProxyCtx) []byte
+}
+
+
+type FuncWebsocketHandler func(data []byte, direction WebsocketDirection, ctx *ProxyCtx)  []byte
+
+func (f FuncWebsocketHandler) Handle(packet []byte, direction WebsocketDirection, ctx *ProxyCtx) []byte {
+	return f(packet,direction, ctx)
+}
