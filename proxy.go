@@ -22,7 +22,7 @@ type ProxyHttpServer struct {
 	Verbose           bool
 	Logger            Logger
 	NonproxyHandler   http.Handler
-	WebSocketHandler  func(dst io.Writer, src io.Reader, direction WebsocketDirection) error
+	WebSocketHandler  func(dst io.Writer, src io.Reader, direction WebsocketDirection, ctx *ProxyCtx) error
 	reqHandlers       []ReqHandler
 	respHandlers      []RespHandler
 	httpsHandlers     []HttpsHandler
@@ -219,7 +219,7 @@ func NewProxyHttpServer() *ProxyHttpServer {
 		NonproxyHandler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, "This is a proxy server. Does not respond to non-proxy requests.", 500)
 		}),
-		WebSocketHandler: func(dst io.Writer, src io.Reader, direction WebsocketDirection) error {
+		WebSocketHandler: func(dst io.Writer, src io.Reader, direction WebsocketDirection, ctx *ProxyCtx) error {
 			_, err := io.Copy(dst, src)
 			return err
 		},
@@ -231,14 +231,12 @@ func NewProxyHttpServer() *ProxyHttpServer {
 	return &proxy
 }
 
-
-func (proxy *ProxyHttpServer) filterWebsocketPacket(data []byte, direction WebsocketDirection, ctx *ProxyCtx) []byte {
+func (proxy *ProxyHttpServer) FilterWebsocketPacket(data []byte, direction WebsocketDirection, ctx *ProxyCtx) []byte {
 	for _, h := range proxy.websocketHandlers {
 		data = h.Handle(data, direction, ctx)
 	}
 	return data
 }
-
 
 func (proxy *ProxyHttpServer) AddWebsocketHandler(f func(data []byte, direction WebsocketDirection, ctx *ProxyCtx) []byte) {
 	proxy.websocketHandlers = append(proxy.websocketHandlers, FuncWebsocketHandler(f))
