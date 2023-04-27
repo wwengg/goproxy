@@ -42,7 +42,7 @@ func StartEchoServer(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		http.HandleFunc("/", echo)
-		err := http.ListenAndServeTLS(":12345", "localhost.pem", "localhost-key.pem", nil)
+		err := http.ListenAndServeTLS(":12345", "/Users/wwg/development/goproxy/examples/goproxy-websockets/localhost.pem", "/Users/wwg/development/goproxy/examples/goproxy-websockets/localhost-key.pem", nil)
 		if err != nil {
 			panic("ListenAndServe: " + err.Error())
 		}
@@ -56,6 +56,16 @@ func StartProxy(wg *sync.WaitGroup) {
 	go func() {
 		proxy := goproxy.NewProxyHttpServer()
 		proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
+		//proxy.WebSocketHandler = http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		//	conn, buf, _ := w.(http.Hijacker).Hijack()
+		//	log.Println(conn)
+		//	log.Println(buf)
+		//})
+		//proxy.AddWebsocketHandler(func(data []byte, direction goproxy.WebsocketDirection, ctx *goproxy.ProxyCtx) []byte {
+		//	log.Println(string(data))
+		//	log.Println(direction)
+		//	return nil
+		//})
 		proxy.Verbose = true
 
 		err := http.ListenAndServe(":54321", proxy)
@@ -95,6 +105,7 @@ func main() {
 		defer c.Close()
 		defer close(done)
 		for {
+
 			_, message, err := c.ReadMessage()
 			if err != nil {
 				log.Println("read:", err)

@@ -19,14 +19,15 @@ type ProxyHttpServer struct {
 	// KeepDestinationHeaders indicates the proxy should retain any headers present in the http.Response before proxying
 	KeepDestinationHeaders bool
 	// setting Verbose to true will log information on each request sent to the proxy
-	Verbose         bool
-	Logger          Logger
-	NonproxyHandler http.Handler
-	reqHandlers     []ReqHandler
-	respHandlers    []RespHandler
-	httpsHandlers   []HttpsHandler
+	Verbose           bool
+	Logger            Logger
+	NonproxyHandler   http.Handler
+	WebSocketHandler  func(dst io.Writer, src io.Reader, direction WebsocketDirection) error
+	reqHandlers       []ReqHandler
+	respHandlers      []RespHandler
+	httpsHandlers     []HttpsHandler
 	websocketHandlers []WebsocketHandler
-	Tr              *http.Transport
+	Tr                *http.Transport
 	// ConnectDial will be used to create TCP connections for CONNECT requests
 	// if nil Tr.Dial will be used
 	ConnectDial        func(network string, addr string) (net.Conn, error)
@@ -210,14 +211,18 @@ func (proxy *ProxyHttpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 // NewProxyHttpServer creates and returns a proxy server, logging to stderr by default
 func NewProxyHttpServer() *ProxyHttpServer {
 	proxy := ProxyHttpServer{
-		Logger:        log.New(os.Stderr, "", log.LstdFlags),
-		reqHandlers:   []ReqHandler{},
-		respHandlers:  []RespHandler{},
-		httpsHandlers: []HttpsHandler{},
+		Logger:            log.New(os.Stderr, "", log.LstdFlags),
+		reqHandlers:       []ReqHandler{},
+		respHandlers:      []RespHandler{},
+		httpsHandlers:     []HttpsHandler{},
 		websocketHandlers: []WebsocketHandler{},
 		NonproxyHandler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, "This is a proxy server. Does not respond to non-proxy requests.", 500)
 		}),
+		WebSocketHandler: func(dst io.Writer, src io.Reader, direction WebsocketDirection) error {
+			_, err := io.Copy(dst, src)
+			return err
+		},
 		Tr: &http.Transport{TLSClientConfig: tlsClientSkipVerify, Proxy: http.ProxyFromEnvironment},
 	}
 
